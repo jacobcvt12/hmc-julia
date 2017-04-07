@@ -23,6 +23,12 @@ function metropolis(prior_mu, prior_tau, ϵ, L, current_q)
     for i in 1:L
         q += ϵ * p
 
+        # constrain τ variable
+        if q[2] < 0
+            q[2] *= -1.
+            p[2] *= -1.
+        end
+
         if i != L
             p -= ϵ * ForwardDiff.gradient(U, q)
         end
@@ -89,6 +95,8 @@ D = rand(Normal(μ, sqrt(1./τ)), n)
 burnin = 100 # number of burnin samples
 iter = 1100 # total samples
 leapfrog = 10 # number of leapfrog steps
+ϵₐ=0.0104 # lower bound of ϵ
+ϵᵦ=0.0156 # upper bound of ϵ
 
 chain = HMC(D, L=leapfrog, S=iter)
 mean(chain[(burnin+1):iter, ])
