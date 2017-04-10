@@ -24,8 +24,8 @@ function metropolis(prior_mu, prior_tau, ϵ, L, current_q)
         q += ϵ * p
 
         # constrain τ variable
-        if q[2] < 0
-            q[2] *= -1.
+        if q[2] < 0.001
+            q[2] = 0.001 + (0.001 - q[2])
             p[2] *= -1.
         end
 
@@ -55,7 +55,7 @@ function metropolis(prior_mu, prior_tau, ϵ, L, current_q)
     end
 end
 
-function HMC(D; μ₀=0, σ₀=100, A=0.01, B=0.01,
+function HMC(D, orig; μ₀=0, σ₀=100, A=0.01, B=0.01,
              S=1000, L=50, ϵₐ=0.0104, ϵᵦ=0.0156)
     # allocate chain
     chain = zeros(S, 2)
@@ -65,8 +65,10 @@ function HMC(D; μ₀=0, σ₀=100, A=0.01, B=0.01,
     prior_tau = Gamma(A, 1. / B)
 
     # start at prior
-    chain[1, 1] = rand(prior_mu, 1)[1]
-    chain[1, 2] = rand(prior_tau, 1)[1]
+    #chain[1, 1] = rand(prior_mu, 1)[1]
+    #chain[1, 2] = rand(prior_tau, 1)[1]
+    chain[1, 1] = orig[1]
+    chain[1, 2] = orig[2]
 
     for s in 2:S
         ϵ = rand(Uniform(ϵₐ, ϵᵦ), 1)[1]
@@ -83,8 +85,8 @@ end
 # priors
 μ₀ = 0.
 σ₀ = 100.
-A = 0.01
-B = 0.01
+A = 0.1
+B = 0.1
 
 # simulate data
 srand(1)
@@ -92,15 +94,27 @@ n = 1000
 D = rand(Normal(μ, sqrt(1./τ)), n)
 
 # mcmc parameters
-burnin = 100 # number of burnin samples
-iter = 1100 # total samples
-leapfrog = 10 # number of leapfrog steps
-ϵₐ=0.0104 # lower bound of ϵ
-ϵᵦ=0.0156 # upper bound of ϵ
+burnin = 500 # number of burnin samples
+iter = 1500 # total samples
+leapfrog = 100 # number of leapfrog steps
+ϵₐ=0.0104 / 50. # lower bound of ϵ
+ϵᵦ=0.0156 / 50. # upper bound of ϵ
 
-chain = HMC(D, L=leapfrog, S=iter)
-mean(chain[(burnin+1):iter, ])
-std(chain[(burnin+1):iter, ])
+chain = HMC(D, [25., 2.], L=leapfrog, S=iter, ϵₐ=ϵₐ, ϵᵦ=ϵᵦ, A=A, B=B)
+
+# check acceptance ratio
+rejects = 0
+for i in 2:iter
+    if chain[i, :] == chain[(i-1), :]
+        rejects += 1
+    end
+end
+
+(iter - rejects) / iter
+
+mean(chain[(burnin+1):iter, :], 1)
+std(chain[(burnin+1):iter, :], 1)
 
 using Gadfly
 plot(y=chain[:, 1])
+plot(y=chain[:, 2])
