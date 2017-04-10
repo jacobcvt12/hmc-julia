@@ -65,8 +65,6 @@ function HMC(D, orig; μ₀=0, σ₀=100, A=0.01, B=0.01,
     prior_tau = Gamma(A, 1. / B)
 
     # start at prior
-    #chain[1, 1] = rand(prior_mu, 1)[1]
-    #chain[1, 2] = rand(prior_tau, 1)[1]
     chain[1, 1] = orig[1]
     chain[1, 2] = orig[2]
 
