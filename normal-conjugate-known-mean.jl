@@ -19,12 +19,17 @@ function metropolis(prior_tau, μ, ϵ, L, current_q)
     # half step for momentum
     p -= (ϵ / 2.) * ForwardDiff.gradient(U, q)
 
+    # track how many times the particle hits a "wall"
+    wall = 0
+
     # take L full steps for position and L-1 for momentum
     for i in 1:L
         q += ϵ * p
 
         # constrain τ variable
         if q[1] < 0
+            #println("$i, $(q[1]), $(p[1])")
+            wall += 1
             q[1] *= -1.
             p[1] *= -1.
         end
@@ -49,9 +54,9 @@ function metropolis(prior_tau, μ, ϵ, L, current_q)
 
     # accept or reject proposal with metropolis
     if rand(Uniform(), 1)[1] < accept_prob
-        return q # accept
+        return q, wall # accept
     else
-        return current_q # reject
+        return current_q, wall # reject
     end
 end
 
@@ -59,6 +64,9 @@ function HMC(D, μ; A=0.01, B=0.01,
              S=1000, L=50, ϵₐ=0.0104, ϵᵦ=0.0156)
     # allocate chain
     chain = zeros(S, 1)
+
+    # allocate wall hits
+    walls = zeros(S, 1)
 
     # construct prior
     prior_tau = Gamma(A, 1. / B)
@@ -70,10 +78,10 @@ function HMC(D, μ; A=0.01, B=0.01,
 
     for s in 2:S
         ϵ = rand(Uniform(ϵₐ, ϵᵦ), 1)[1]
-        chain[s, :] = metropolis(prior_tau, μ, ϵ, L, chain[s-1, :])
+        chain[s, :], walls[s]  = metropolis(prior_tau, μ, ϵ, L, chain[s-1, :])
     end
 
-    return chain
+    return chain, walls
 end
 
 # true values
@@ -93,10 +101,15 @@ D = rand(Normal(μ, sqrt(1./τ)), n)
 burnin = 100 # number of burnin samples
 iter = 1100 # total samples
 leapfrog = 10 # number of leapfrog steps
-ϵₐ=0.0104 # lower bound of ϵ
-ϵᵦ=0.0156 # upper bound of ϵ
+ϵₐ=0.0104 / 20. # lower bound of ϵ
+ϵᵦ=0.0156 / 20. # upper bound of ϵ
 
-chain = HMC(D, μ, L=leapfrog, S=iter)
+chain, wall = HMC(D, μ, L=leapfrog, S=iter, ϵₐ=ϵₐ, ϵᵦ=ϵᵦ)
+
+# check acceptance ratio
+1 - (sum(chain[2:end, :] .== chain[1:(end-1), :]) / iter)
+
+sum(wall)
 mean(chain[(burnin+1):iter, ])
 std(chain[(burnin+1):iter, ])
 
