@@ -72,9 +72,8 @@ function HMC(D, μ; A=0.01, B=0.01,
     prior_tau = Gamma(A, 1. / B)
 
     # start at prior
-    #chain[1, 1] = rand(prior_mu, 1)[1]
-    #chain[1, :] = rand(prior_tau, 1)
-    chain[1, :] = [1. / var(D)]
+    chain[1, :] = rand(prior_tau, 1)
+    #chain[1, :] = [1. / var(D)]
 
     for s in 2:S
         ϵ = rand(Uniform(ϵₐ, ϵᵦ), 1)[1]
@@ -89,8 +88,8 @@ end
 τ = 0.01
 
 # priors
-A = 0.01
-B = 0.01
+A = 0.1
+B = 0.1
 
 # simulate data
 srand(1)
@@ -101,10 +100,10 @@ D = rand(Normal(μ, sqrt(1./τ)), n)
 burnin = 100 # number of burnin samples
 iter = 1100 # total samples
 leapfrog = 10 # number of leapfrog steps
-ϵₐ=0.0104 / 20. # lower bound of ϵ
-ϵᵦ=0.0156 / 20. # upper bound of ϵ
+ϵₐ=0.0104 / 50. # lower bound of ϵ
+ϵᵦ=0.0156 / 50. # upper bound of ϵ
 
-chain, wall = HMC(D, μ, L=leapfrog, S=iter, ϵₐ=ϵₐ, ϵᵦ=ϵᵦ)
+chain, wall = HMC(D, μ, L=leapfrog, S=iter, ϵₐ=ϵₐ, ϵᵦ=ϵᵦ, A=A, B=B)
 
 # check acceptance ratio
 1 - (sum(chain[2:end, :] .== chain[1:(end-1), :]) / iter)
